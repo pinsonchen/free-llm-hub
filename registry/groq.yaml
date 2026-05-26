@@ -1,0 +1,32 @@
+# Groq — https://console.groq.com
+# Limits below are conservative free-tier defaults; verify against
+# https://console.groq.com/docs/rate-limits before relying on them.
+
+- provider: groq
+  model: llama-3.3-70b-versatile
+  endpoint: https://api.groq.com/openai/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 30
+    rpd: 1000
+    tpm: 6000
+  context_window: 131072
+  capabilities: [coding, english, tools, json_mode]
+  signup_url: https://console.groq.com
+  docs_url: https://console.groq.com/docs/rate-limits
+  last_verified: 2026-05-27
+
+- provider: groq
+  model: llama-3.1-8b-instant
+  endpoint: https://api.groq.com/openai/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 30
+    rpd: 14400
+    tpm: 20000
+  context_window: 131072
+  capabilities: [english, tools, json_mode]
+  docs_url: https://console.groq.com/docs/rate-limits
+  last_verified: 2026-05-27

@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "free-llm-hub registry entry",
+  "type": "object",
+  "required": [
+    "provider",
+    "model",
+    "endpoint",
+    "protocol",
+    "auth_style",
+    "rate_limit",
+    "context_window",
+    "capabilities",
+    "last_verified"
+  ],
+  "properties": {
+    "provider": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "endpoint": { "type": "string", "format": "uri" },
+    "protocol": { "enum": ["openai", "anthropic", "gemini"] },
+    "auth_style": { "enum": ["bearer", "x-api-key", "query"] },
+    "rate_limit": {
+      "type": "object",
+      "anyOf": [
+        { "required": ["rpm"] },
+        { "required": ["rpd"] },
+        { "required": ["tpm"] },
+        { "required": ["tpd"] }
+      ],
+      "properties": {
+        "rpm": { "type": "integer", "minimum": 1 },
+        "rpd": { "type": "integer", "minimum": 1 },
+        "tpm": { "type": "integer", "minimum": 1 },
+        "tpd": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "context_window": { "type": "integer", "minimum": 1 },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "enum": ["coding", "chinese", "english", "long_context", "vision", "tools", "json_mode"]
+      },
+      "uniqueItems": true
+    },
+    "notes": { "type": "string" },
+    "signup_url": { "type": "string", "format": "uri" },
+    "docs_url": { "type": "string", "format": "uri" },
+    "last_verified": { "type": "string", "format": "date" }
+  },
+  "additionalProperties": false
+}

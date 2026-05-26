@@ -1,0 +1,30 @@
+# SiliconFlow — https://siliconflow.cn
+# Free tier grants a one-off ~20M token quota that is consumed across models.
+# Per-minute limits below are best-effort defaults; tune per model in config.
+
+- provider: siliconflow
+  model: Qwen/Qwen2.5-72B-Instruct
+  endpoint: https://api.siliconflow.cn/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 60
+    tpm: 100000
+  context_window: 131072
+  capabilities: [coding, chinese, english, long_context, tools, json_mode]
+  signup_url: https://siliconflow.cn
+  docs_url: https://docs.siliconflow.cn
+  last_verified: 2026-05-27
+
+- provider: siliconflow
+  model: deepseek-ai/DeepSeek-V3
+  endpoint: https://api.siliconflow.cn/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 30
+    tpm: 60000
+  context_window: 65536
+  capabilities: [coding, chinese, english, tools, json_mode]
+  docs_url: https://docs.siliconflow.cn
+  last_verified: 2026-05-27

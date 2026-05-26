@@ -1,0 +1,47 @@
+# Example configuration for free-llm-hub.
+# Copy to `config.yaml` and fill in your own free-tier API keys.
+# DO NOT commit your real config.yaml — it is gitignored for a reason.
+
+auth:
+  # Clients must send this in `Authorization: Bearer <local_api_key>`.
+  # Generated on first run if left empty.
+  local_api_key: ""
+  admin_token: ""
+
+storage:
+  # Backend for QuotaTracker. Default is local SQLite.
+  # backend: redis
+  # url: redis://127.0.0.1:6379/0
+  backend: sqlite
+  url: sqlite:///./hub.db
+
+keys:
+  - provider: groq
+    label: groq-personal
+    key: "gsk_REPLACE_ME"
+    enabled: true
+
+  - provider: gemini
+    label: aistudio-personal
+    key: "AIza_REPLACE_ME"
+    enabled: true
+
+  - provider: siliconflow
+    label: siliconflow-personal
+    key: "sk-REPLACE_ME"
+    enabled: true
+
+policies:
+  # Map logical models to ordered preferences.
+  # The "auto" model is the default fallback.
+  auto:
+    prefer: [groq, gemini, siliconflow]
+    capabilities: []
+  coding-fast:
+    prefer: [groq, cerebras]
+    capabilities: [coding, tools]
+    max_latency_ms: 1500
+  chinese-long-context:
+    prefer: [siliconflow, zhipu, gemini]
+    capabilities: [chinese, long_context]
+    min_context: 32000

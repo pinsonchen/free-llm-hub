@@ -1,0 +1,31 @@
+# Google AI Studio (Gemini API) — https://aistudio.google.com
+# Verify limits at https://ai.google.dev/gemini-api/docs/rate-limits
+
+- provider: gemini
+  model: gemini-2.5-flash
+  endpoint: https://generativelanguage.googleapis.com/v1beta
+  protocol: gemini
+  auth_style: query
+  rate_limit:
+    rpm: 15
+    rpd: 1500
+    tpm: 1000000
+  context_window: 1048576
+  capabilities: [coding, english, chinese, long_context, vision, tools, json_mode]
+  signup_url: https://aistudio.google.com
+  docs_url: https://ai.google.dev/gemini-api/docs/rate-limits
+  last_verified: 2026-05-27
+
+- provider: gemini
+  model: gemini-2.5-pro
+  endpoint: https://generativelanguage.googleapis.com/v1beta
+  protocol: gemini
+  auth_style: query
+  rate_limit:
+    rpm: 2
+    rpd: 50
+    tpm: 32000
+  context_window: 2097152
+  capabilities: [coding, english, chinese, long_context, vision, tools, json_mode]
+  docs_url: https://ai.google.dev/gemini-api/docs/rate-limits
+  last_verified: 2026-05-27
