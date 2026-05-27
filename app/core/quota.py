@@ -208,17 +208,30 @@ class QuotaTracker:
         return result
 
 
-_tracker: QuotaTracker | None = None
+_tracker: QuotaTracker | None = None  # type: ignore[assignment]
 
 
-def get_tracker(db_path: str = "hub.db") -> QuotaTracker:
+def get_tracker(db_path: str = "hub.db"):
     global _tracker
     if _tracker is None:
         _tracker = QuotaTracker(db_path)
     return _tracker
 
 
-def init_tracker(db_path: str = "hub.db") -> QuotaTracker:
+def init_tracker(
+    backend: str = "sqlite",
+    url: str = "sqlite:///./hub.db",
+):
+    """Initialize the global tracker.
+
+    backend: "sqlite" (default) or "redis"
+    url:     sqlite:///path/to.db  or  redis://host:port/db
+    """
     global _tracker
-    _tracker = QuotaTracker(db_path)
+    if backend == "redis":
+        from app.core.quota_redis import RedisQuotaTracker
+        _tracker = RedisQuotaTracker(url)
+    else:
+        db_path = url.replace("sqlite:///", "") if url.startswith("sqlite:///") else url
+        _tracker = QuotaTracker(db_path)
     return _tracker

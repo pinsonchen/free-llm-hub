@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from app.core.config import get_config
 from app.core.logger import log_decision
+from app.core.metrics import metrics
 from app.core.registry import get_registry
 from app.core.router import Candidate, resolve_candidates, resolve_for_physical_model
 from app.core.scheduler import scheduler
@@ -83,11 +84,14 @@ async def _handle_non_streaming(
             latency = (time.time() - start) * 1000
             scheduler.report_success(candidate, total_tokens=resp.total_tokens)
             log_decision(None, candidate, "success", latency, resp.total_tokens)
+            metrics.inc_request(candidate.provider, candidate.model, "success")
+            metrics.add_tokens(candidate.provider, candidate.model, resp.total_tokens)
             return _format_response(resp.data, candidate)
         except Exception as e:
             latency = (time.time() - start) * 1000
             scheduler.report_failure(candidate)
             log_decision(None, candidate, "failure", latency, error=str(e))
+            metrics.inc_request(candidate.provider, candidate.model, "failure")
             last_error = e
             continue
 
@@ -108,6 +112,8 @@ async def _handle_streaming(
     messages: list[dict[str, Any]],
     extra: dict[str, Any],
 ) -> StreamingResponse:
+    from app.core.quota import get_tracker
+
     last_error: Exception | None = None
 
     for _ in range(MAX_RETRIES):
@@ -115,21 +121,37 @@ async def _handle_streaming(
         if candidate is None:
             break
 
+        start = time.time()
         try:
             stream = await call_provider_streaming(candidate, messages, **extra)
             scheduler.report_success(candidate, total_tokens=0)
 
-            async def event_generator(s=stream):
+            async def event_generator(s=stream, c=candidate, t0=start):
+                total_tokens = 0
                 try:
                     async for chunk in s:
+                        usage = getattr(chunk, "usage", None)
+                        if usage and getattr(usage, "total_tokens", None):
+                            total_tokens = max(total_tokens, usage.total_tokens)
+
                         if hasattr(chunk, "model_dump_json"):
                             data = chunk.model_dump_json()
                         else:
                             data = json.dumps(chunk)
                         yield f"data: {data}\n\n"
                     yield "data: [DONE]\n\n"
-                except Exception:
+                except Exception as ex:
                     yield "data: [DONE]\n\n"
+                    log_decision(
+                        None, c, "stream_error", (time.time() - t0) * 1000, error=str(ex)
+                    )
+                    return
+
+                if total_tokens > 0:
+                    get_tracker().record_tokens(c.provider, c.key_label, c.model, total_tokens)
+                log_decision(
+                    None, c, "stream_success", (time.time() - t0) * 1000, total_tokens
+                )
 
             return StreamingResponse(
                 event_generator(),
@@ -138,6 +160,7 @@ async def _handle_streaming(
             )
         except Exception as e:
             scheduler.report_failure(candidate)
+            log_decision(None, candidate, "failure", (time.time() - start) * 1000, error=str(e))
             last_error = e
             continue
 

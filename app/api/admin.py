@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from app.core.config import get_config, load_config
+from app.core.health import get_probe
 from app.core.quota import get_tracker
 from app.core.registry import get_registry, load_registry
 
@@ -54,6 +55,31 @@ async def get_quota() -> dict[str, Any]:
         key_models[key_id] = models_status
 
     return {"quotas": key_models}
+
+
+@router.get("/health")
+async def get_health() -> dict[str, Any]:
+    """Return per-key health probe state."""
+    probe = get_probe()
+    states = probe.all_states()
+    out: dict[str, dict[str, Any]] = {}
+    for key_id, st in states.items():
+        out[key_id] = {
+            "status": st.status,
+            "last_check_at": st.last_check_at,
+            "last_latency_ms": st.last_latency_ms,
+            "consecutive_failures": st.consecutive_failures,
+            "last_error": st.last_error,
+        }
+    return {"health": out}
+
+
+@router.post("/probe")
+async def trigger_probe() -> dict[str, str]:
+    """Trigger an immediate health probe pass."""
+    probe = get_probe()
+    await probe.probe_once()
+    return {"status": "probed"}
 
 
 @router.post("/reload")

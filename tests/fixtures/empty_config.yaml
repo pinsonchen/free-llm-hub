@@ -1,0 +1,13 @@
+auth:
+  local_api_key: ""
+  admin_token: ""
+
+storage:
+  backend: sqlite
+  url: sqlite:///./test_hub.db
+
+keys: []
+
+policies:
+  auto:
+    prefer: []
