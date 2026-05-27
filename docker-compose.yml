@@ -1,0 +1,24 @@
+services:
+  hub:
+    build: .
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./registry:/app/registry:ro
+      - hub-data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # Optional: uncomment for Redis-backed QuotaTracker
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+
+volumes:
+  hub-data:
+  # redis-data:
