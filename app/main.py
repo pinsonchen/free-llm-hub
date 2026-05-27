@@ -15,6 +15,7 @@ from .core.health import get_probe, init_probe
 from .core.metrics import metrics
 from .core.quota import init_tracker
 from .core.registry import load_registry
+from .core.reloader import get_reloader, init_reloader
 
 
 @asynccontextmanager
@@ -27,8 +28,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     probe = init_probe(interval_seconds=interval)
     if os.environ.get("FREELLM_DISABLE_PROBE", "0") != "1":
         probe.start()
+
+    reload_interval = float(os.environ.get("FREELLM_RELOADER_INTERVAL", "2"))
+    reloader = init_reloader(interval_seconds=reload_interval)
+    if os.environ.get("FREELLM_DISABLE_RELOADER", "0") != "1":
+        reloader.start()
     yield
     await get_probe().stop()
+    await get_reloader().stop()
 
 
 app = FastAPI(title="free-llm-hub", version=__version__, lifespan=lifespan)

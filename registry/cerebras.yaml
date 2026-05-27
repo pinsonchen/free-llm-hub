@@ -1,0 +1,31 @@
+# Cerebras Cloud — https://cloud.cerebras.ai
+# Free tier: very fast inference; verify limits at https://inference-docs.cerebras.ai
+
+- provider: cerebras
+  model: llama-3.3-70b
+  endpoint: https://api.cerebras.ai/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 30
+    rpd: 1700
+    tpm: 60000
+  context_window: 8192
+  capabilities: [coding, english, tools, json_mode]
+  signup_url: https://cloud.cerebras.ai
+  docs_url: https://inference-docs.cerebras.ai/introduction
+  last_verified: 2026-05-27
+
+- provider: cerebras
+  model: qwen-3-32b
+  endpoint: https://api.cerebras.ai/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 30
+    rpd: 1700
+    tpm: 60000
+  context_window: 32768
+  capabilities: [coding, chinese, english, tools, json_mode]
+  docs_url: https://inference-docs.cerebras.ai/introduction
+  last_verified: 2026-05-27

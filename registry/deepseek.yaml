@@ -1,0 +1,30 @@
+# DeepSeek — https://platform.deepseek.com
+# Direct DeepSeek platform; also available via SiliconFlow / 百炼.
+
+- provider: deepseek
+  model: deepseek-chat
+  endpoint: https://api.deepseek.com/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 60
+    tpm: 100000
+  context_window: 65536
+  capabilities: [coding, chinese, english, tools, json_mode]
+  signup_url: https://platform.deepseek.com
+  docs_url: https://api-docs.deepseek.com
+  last_verified: 2026-05-27
+
+- provider: deepseek
+  model: deepseek-reasoner
+  endpoint: https://api.deepseek.com/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 60
+    tpm: 100000
+  context_window: 65536
+  capabilities: [coding, chinese, english, tools]
+  notes: "Reasoning model — slower, higher quality."
+  docs_url: https://api-docs.deepseek.com
+  last_verified: 2026-05-27

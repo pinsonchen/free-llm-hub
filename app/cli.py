@@ -1,8 +1,10 @@
-"""`freellm` CLI — doctor, models, route commands."""
+"""`freellm` CLI — doctor, models, route, health commands."""
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+import json
 import sys
 import time
 
@@ -12,33 +14,40 @@ from app.core.router import resolve_candidates, resolve_for_physical_model
 
 
 def main() -> int:
-    args = sys.argv[1:]
-    if not args or args[0] in ("-h", "--help"):
-        _print_help()
+    parser = argparse.ArgumentParser(
+        prog="freellm",
+        description="CLI for free-llm-hub — inspect routing, keys, and health.",
+    )
+    sub = parser.add_subparsers(dest="cmd")
+
+    sub.add_parser("doctor", help="Verify configured keys against providers")
+    sub.add_parser("models", help="List logical and physical models")
+
+    p_route = sub.add_parser("route", help="Dry-run the router for a logical model")
+    p_route.add_argument("model", nargs="?", default="auto", help="logical model name")
+    p_route.add_argument("--prompt", default="hello", help="prompt to evaluate")
+    p_route.add_argument("--json", action="store_true", help="emit JSON output")
+
+    p_health = sub.add_parser("health", help="Print live health snapshot from /admin/health")
+    p_health.add_argument("--url", default="http://localhost:8000", help="hub base URL")
+    p_health.add_argument("--json", action="store_true", help="emit JSON output")
+    p_health.add_argument("--probe", action="store_true", help="trigger /admin/probe first")
+
+    args = parser.parse_args()
+    if args.cmd is None:
+        parser.print_help()
         return 0
 
-    cmd = args[0]
-    if cmd == "doctor":
+    if args.cmd == "doctor":
         return asyncio.run(_doctor())
-    elif cmd == "models":
+    if args.cmd == "models":
         return _models()
-    elif cmd == "route":
-        prompt = args[1] if len(args) > 1 else "hello"
-        return _route(prompt)
-    else:
-        print(f"Unknown command: {cmd}")
-        _print_help()
-        return 1
-
-
-def _print_help() -> None:
-    print("""freellm — CLI for free-llm-hub
-
-Commands:
-  doctor    Verify configured keys against providers (latency + status)
-  models    List available logical + physical models
-  route     Dry-run the router for a given prompt/model
-""")
+    if args.cmd == "route":
+        return _route(args.model, args.prompt, json_output=args.json)
+    if args.cmd == "health":
+        return _health(args.url, probe=args.probe, json_output=args.json)
+    parser.print_help()
+    return 1
 
 
 async def _doctor() -> int:
@@ -52,11 +61,8 @@ async def _doctor() -> int:
 
     print(f"Checking {len(cfg.keys)} configured key(s)...\n")
 
-    try:
-        import importlib.util
-        if importlib.util.find_spec("litellm") is None:
-            raise ImportError
-    except ImportError:
+    import importlib.util
+    if importlib.util.find_spec("litellm") is None:
         print("litellm not installed. Run: pip install litellm")
         return 1
 
@@ -137,25 +143,111 @@ def _models() -> int:
     return 0
 
 
-def _route(prompt: str) -> int:
+def _route(model: str, prompt: str, json_output: bool = False) -> int:
     load_config()
     load_registry()
 
-    candidates = resolve_candidates("auto")
+    candidates = resolve_candidates(model)
     if not candidates:
-        print("No candidates found for model 'auto'. Check config.yaml.")
+        msg = f"No candidates found for model '{model}'. Check config.yaml."
+        if json_output:
+            print(json.dumps({"error": msg, "candidates": []}))
+        else:
+            print(msg)
         return 1
 
-    print(f"Routing for model='auto', prompt='{prompt[:50]}...'\n")
-    print(f"{'#':<3} {'Provider':<12} {'Model':<40} {'Key':<20} {'RPM':>5} {'RPD':>6}")
-    print("-" * 90)
+    if json_output:
+        out = {
+            "model": model,
+            "prompt_preview": prompt[:80],
+            "candidates": [
+                {
+                    "rank": i,
+                    "provider": c.provider,
+                    "model": c.model,
+                    "key_label": c.key_label,
+                    "context_window": c.context_window,
+                    "rate_limit_rpm": c.rate_limit_rpm,
+                    "rate_limit_rpd": c.rate_limit_rpd,
+                    "rate_limit_tpm": c.rate_limit_tpm,
+                    "rate_limit_tpd": c.rate_limit_tpd,
+                }
+                for i, c in enumerate(candidates, 1)
+            ],
+            "would_pick": {
+                "provider": candidates[0].provider,
+                "model": candidates[0].model,
+                "key_label": candidates[0].key_label,
+            },
+        }
+        print(json.dumps(out, indent=2))
+        return 0
+
+    print(f"Routing for model='{model}', prompt='{prompt[:50]}...'\n")
+    print(
+        f"{'#':<3} {'Provider':<12} {'Model':<40} {'Key':<20} "
+        f"{'Ctx':>7} {'RPM':>5} {'RPD':>6}"
+    )
+    print("-" * 100)
     for i, c in enumerate(candidates, 1):
         rpm = str(c.rate_limit_rpm) if c.rate_limit_rpm else "-"
         rpd = str(c.rate_limit_rpd) if c.rate_limit_rpd else "-"
-        print(f"{i:<3} {c.provider:<12} {c.model:<40} {c.key_label:<20} {rpm:>5} {rpd:>6}")
+        ctx = f"{c.context_window // 1000}k" if c.context_window else "-"
+        print(
+            f"{i:<3} {c.provider:<12} {c.model:<40} {c.key_label:<20} "
+            f"{ctx:>7} {rpm:>5} {rpd:>6}"
+        )
 
-    print(f"\nScheduler would pick: #{1} (first available)")
+    pick = candidates[0]
+    print(
+        f"\nScheduler would pick: #1 → {pick.provider}/{pick.model} "
+        f"(key={pick.key_label}, ctx={pick.context_window})"
+    )
     return 0
+
+
+def _health(base_url: str, probe: bool = False, json_output: bool = False) -> int:
+    try:
+        import httpx
+    except ImportError:
+        print("httpx not installed. Run: pip install httpx")
+        return 1
+
+    base = base_url.rstrip("/")
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            if probe:
+                client.post(f"{base}/admin/probe")
+            r = client.get(f"{base}/admin/health")
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        print(f"Failed to reach {base}/admin/health: {e}")
+        return 1
+
+    health = data.get("health", {})
+    if json_output:
+        print(json.dumps(data, indent=2))
+        return 0
+
+    if not health:
+        print("No health entries (probe may not have run yet).")
+        return 0
+
+    print(f"{'Key':<28} {'Status':<10} {'Latency':>10} {'Failures':>9} {'Last error':<30}")
+    print("-" * 92)
+    any_down = False
+    for key_id, st in health.items():
+        status = st.get("status", "unknown")
+        if status in ("down", "degraded"):
+            any_down = True
+        lat = st.get("last_latency_ms")
+        lat_str = f"{lat:.0f}ms" if lat is not None else "-"
+        fails = st.get("consecutive_failures", 0)
+        err = (st.get("last_error") or "")[:28]
+        print(f"{key_id:<28} {status:<10} {lat_str:>10} {fails:>9} {err:<30}")
+
+    return 1 if any_down else 0
 
 
 def _get_first_model_for_provider(provider: str) -> str:

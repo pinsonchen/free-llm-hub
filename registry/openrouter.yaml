@@ -1,0 +1,43 @@
+# OpenRouter — https://openrouter.ai
+# Free models have a ":free" suffix in the model id. Daily limit is shared
+# across all free models on the account. Verify at https://openrouter.ai/docs
+
+- provider: openrouter
+  model: deepseek/deepseek-chat-v3:free
+  endpoint: https://openrouter.ai/api/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 20
+    rpd: 200
+  context_window: 65536
+  capabilities: [coding, chinese, english, tools, json_mode]
+  signup_url: https://openrouter.ai
+  docs_url: https://openrouter.ai/docs/limits
+  last_verified: 2026-05-27
+
+- provider: openrouter
+  model: meta-llama/llama-3.3-70b-instruct:free
+  endpoint: https://openrouter.ai/api/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 20
+    rpd: 200
+  context_window: 131072
+  capabilities: [coding, english, tools, json_mode]
+  docs_url: https://openrouter.ai/docs/limits
+  last_verified: 2026-05-27
+
+- provider: openrouter
+  model: qwen/qwen-2.5-72b-instruct:free
+  endpoint: https://openrouter.ai/api/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 20
+    rpd: 200
+  context_window: 32768
+  capabilities: [coding, chinese, english, tools, json_mode]
+  docs_url: https://openrouter.ai/docs/limits
+  last_verified: 2026-05-27

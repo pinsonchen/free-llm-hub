@@ -1,0 +1,29 @@
+# Zhipu AI (BigModel) — https://open.bigmodel.cn
+# 新账号赠送 2000 万 tokens 长期可用。
+
+- provider: zhipu
+  model: glm-4.6-flash
+  endpoint: https://open.bigmodel.cn/api/paas/v4
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 60
+    tpm: 100000
+  context_window: 131072
+  capabilities: [coding, chinese, english, long_context, tools, json_mode]
+  signup_url: https://open.bigmodel.cn
+  docs_url: https://open.bigmodel.cn/dev/api
+  last_verified: 2026-05-27
+
+- provider: zhipu
+  model: glm-4.5-air
+  endpoint: https://open.bigmodel.cn/api/paas/v4
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 60
+    tpm: 100000
+  context_window: 131072
+  capabilities: [coding, chinese, english, long_context, tools]
+  docs_url: https://open.bigmodel.cn/dev/api
+  last_verified: 2026-05-27

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>free-llm-hub · Admin</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161a22;
+    --border: #232934;
+    --fg: #e6e8ec;
+    --muted: #8b94a3;
+    --accent: #4f8cff;
+    --good: #3ddc84;
+    --warn: #f5a623;
+    --bad: #ff5c5c;
+    --unk: #888;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 0.85rem; }
+  main { padding: 1.5rem; display: grid; gap: 1.5rem; }
+  section.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+  }
+  section.panel h2 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  th, td {
+    padding: 0.45rem 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--muted); font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+  .pill {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: lowercase;
+  }
+  .pill.healthy { background: rgba(61,220,132,0.15); color: var(--good); }
+  .pill.degraded { background: rgba(245,166,35,0.15); color: var(--warn); }
+  .pill.down { background: rgba(255,92,92,0.15); color: var(--bad); }
+  .pill.unknown { background: rgba(136,136,136,0.15); color: var(--unk); }
+  .pill.ok { background: rgba(61,220,132,0.15); color: var(--good); }
+  .pill.full { background: rgba(255,92,92,0.15); color: var(--bad); }
+  .bar {
+    background: #20262f;
+    border-radius: 3px;
+    height: 6px;
+    overflow: hidden;
+    width: 100px;
+  }
+  .bar > span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+  }
+  .bar > span.warn { background: var(--warn); }
+  .bar > span.bad { background: var(--bad); }
+  .muted { color: var(--muted); }
+  button.refresh {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.4rem 0.9rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  button.refresh:hover { filter: brightness(1.1); }
+  code.kbd {
+    background: #20262f;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>free-llm-hub · admin</h1>
+  <div class="meta">
+    <span id="lastRefresh" class="muted">never refreshed</span>
+    &nbsp;
+    <button class="refresh" onclick="refresh()">Refresh</button>
+  </div>
+</header>
+<main>
+  <section class="panel">
+    <h2>Health</h2>
+    <table id="healthTable">
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Status</th>
+          <th>Latency</th>
+          <th>Failures</th>
+          <th>Last check</th>
+          <th>Last error</th>
+        </tr>
+      </thead>
+      <tbody><tr><td colspan="6" class="muted">loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Quota</h2>
+    <table id="quotaTable">
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Model</th>
+          <th>Requests</th>
+          <th>Tokens</th>
+          <th>Status</th>
+          <th>Resets in</th>
+        </tr>
+      </thead>
+      <tbody><tr><td colspan="6" class="muted">loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Endpoints</h2>
+    <p class="muted" style="margin:0">
+      <code class="kbd">GET /admin/health</code> ·
+      <code class="kbd">GET /admin/quota</code> ·
+      <code class="kbd">POST /admin/probe</code> ·
+      <code class="kbd">POST /admin/reload</code> ·
+      <code class="kbd">GET /metrics</code>
+    </p>
+  </section>
+</main>
+<script>
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(url + ' returned ' + r.status);
+  return r.json();
+}
+
+function pct(used, limit) {
+  if (!limit) return 0;
+  return Math.min(100, Math.round((used / limit) * 100));
+}
+
+function fmtTimestamp(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  return d.toLocaleTimeString();
+}
+
+function fmtSeconds(s) {
+  if (s == null) return '—';
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.round(s/60) + 'm';
+  return Math.round(s/3600) + 'h';
+}
+
+function renderHealth(health) {
+  const tbody = document.querySelector('#healthTable tbody');
+  const rows = Object.entries(health || {});
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="muted">no health entries</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(([key, st]) => `
+    <tr>
+      <td><code>${key}</code></td>
+      <td><span class="pill ${st.status}">${st.status}</span></td>
+      <td>${st.last_latency_ms != null ? st.last_latency_ms.toFixed(0) + 'ms' : '—'}</td>
+      <td>${st.consecutive_failures || 0}</td>
+      <td class="muted">${fmtTimestamp(st.last_check_at)}</td>
+      <td class="muted" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(st.last_error||'').replace(/"/g,'&quot;')}">${st.last_error || '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function renderQuota(quotas) {
+  const tbody = document.querySelector('#quotaTable tbody');
+  const entries = Object.entries(quotas || {});
+  if (!entries.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="muted">no quota entries</td></tr>';
+    return;
+  }
+  const rows = [];
+  for (const [key, models] of entries) {
+    for (const m of models) {
+      const reqPct = pct(m.requests_used, m.requests_limit);
+      const tokPct = pct(m.tokens_used, m.tokens_limit);
+      const reqClass = reqPct >= 90 ? 'bad' : (reqPct >= 70 ? 'warn' : '');
+      const tokClass = tokPct >= 90 ? 'bad' : (tokPct >= 70 ? 'warn' : '');
+      rows.push(`
+        <tr>
+          <td><code>${key}</code></td>
+          <td><code>${m.model}</code></td>
+          <td>
+            <div>${m.requests_used} / ${m.requests_limit ?? '∞'}</div>
+            ${m.requests_limit ? `<div class="bar"><span class="${reqClass}" style="width:${reqPct}%"></span></div>` : ''}
+          </td>
+          <td>
+            <div>${m.tokens_used} / ${m.tokens_limit ?? '∞'}</div>
+            ${m.tokens_limit ? `<div class="bar"><span class="${tokClass}" style="width:${tokPct}%"></span></div>` : ''}
+          </td>
+          <td><span class="pill ${m.ok ? 'ok' : 'full'}">${m.ok ? 'ok' : 'full'}</span></td>
+          <td class="muted">${fmtSeconds(m.resets_in_seconds)}</td>
+        </tr>
+      `);
+    }
+  }
+  tbody.innerHTML = rows.join('') || '<tr><td colspan="6" class="muted">no models</td></tr>';
+}
+
+async function refresh() {
+  try {
+    const [h, q] = await Promise.all([
+      fetchJSON('/admin/health'),
+      fetchJSON('/admin/quota'),
+    ]);
+    renderHealth(h.health || {});
+    renderQuota(q.quotas || {});
+    document.getElementById('lastRefresh').textContent =
+      'updated ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById('lastRefresh').textContent = 'error: ' + e.message;
+  }
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

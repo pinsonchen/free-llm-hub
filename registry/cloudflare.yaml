@@ -1,0 +1,29 @@
+# Cloudflare Workers AI — https://developers.cloudflare.com/workers-ai
+# Per-account daily token quota (Neuron-based). Endpoint requires the account_id
+# in the URL — adapter must inject it. Below shows a generic placeholder.
+
+- provider: cloudflare
+  model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+  endpoint: https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpd: 10000
+  context_window: 8192
+  capabilities: [coding, english, tools, json_mode]
+  signup_url: https://dash.cloudflare.com/sign-up/workers-and-pages
+  docs_url: https://developers.cloudflare.com/workers-ai/platform/pricing
+  notes: "Replace ACCOUNT_ID via override_endpoint per key in config.yaml."
+  last_verified: 2026-05-27
+
+- provider: cloudflare
+  model: "@cf/qwen/qwen2.5-coder-32b-instruct"
+  endpoint: https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpd: 10000
+  context_window: 32768
+  capabilities: [coding, chinese, english, tools, json_mode]
+  docs_url: https://developers.cloudflare.com/workers-ai/platform/pricing
+  last_verified: 2026-05-27

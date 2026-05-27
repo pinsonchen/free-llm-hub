@@ -31,28 +31,30 @@ def _build_litellm_model_name(candidate: Candidate) -> str:
         return f"groq/{model}"
     elif provider == "gemini":
         return f"gemini/{model}"
-    elif provider in ("siliconflow", "zhipu", "deepseek", "openrouter"):
+    elif provider == "cerebras":
+        return f"cerebras/{model}"
+    elif provider in (
+        "siliconflow",
+        "zhipu",
+        "deepseek",
+        "openrouter",
+        "kimi",
+        "cloudflare",
+    ):
         return f"openai/{model}"
     else:
         return f"openai/{model}"
 
 
 def _build_litellm_kwargs(candidate: Candidate) -> dict[str, Any]:
-    kwargs: dict[str, Any] = {}
+    kwargs: dict[str, Any] = {"api_key": candidate.key}
     provider = candidate.provider
 
-    if provider == "groq":
-        kwargs["api_key"] = candidate.key
-        kwargs["api_base"] = candidate.endpoint
-    elif provider == "gemini":
-        kwargs["api_key"] = candidate.key
-    elif provider in ("siliconflow", "zhipu", "deepseek", "openrouter"):
-        kwargs["api_key"] = candidate.key
-        kwargs["api_base"] = candidate.endpoint
-    else:
-        kwargs["api_key"] = candidate.key
-        kwargs["api_base"] = candidate.endpoint
+    # Gemini uses query-style auth via key only; no api_base.
+    if provider == "gemini":
+        return kwargs
 
+    kwargs["api_base"] = candidate.endpoint
     return kwargs
 
 

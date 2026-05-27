@@ -1,10 +1,12 @@
-"""Admin API routes — /admin/quota, /admin/health, /admin/reload."""
+"""Admin API routes — /admin/quota, /admin/health, /admin/reload, /admin/ui."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
+from fastapi.responses import HTMLResponse
 
 from app.core.config import get_config, load_config
 from app.core.health import get_probe
@@ -12,6 +14,14 @@ from app.core.quota import get_tracker
 from app.core.registry import get_registry, load_registry
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+_DASHBOARD_HTML = (Path(__file__).parent / "dashboard.html").read_text(encoding="utf-8")
+
+
+@router.get("/ui", response_class=HTMLResponse)
+async def admin_ui() -> str:
+    """Read-only dashboard for quota and health."""
+    return _DASHBOARD_HTML
 
 
 @router.get("/quota")

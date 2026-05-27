@@ -43,6 +43,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"app/api/dashboard.html" = "app/api/dashboard.html"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

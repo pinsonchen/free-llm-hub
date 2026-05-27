@@ -1,0 +1,29 @@
+# Moonshot AI (Kimi) — https://platform.moonshot.cn
+# 新账号赠送代金券 (¥15)；OpenAI compatible.
+
+- provider: kimi
+  model: moonshot-v1-8k
+  endpoint: https://api.moonshot.cn/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 30
+    tpm: 30000
+  context_window: 8192
+  capabilities: [chinese, english, tools, json_mode]
+  signup_url: https://platform.moonshot.cn
+  docs_url: https://platform.moonshot.cn/docs/api
+  last_verified: 2026-05-27
+
+- provider: kimi
+  model: moonshot-v1-128k
+  endpoint: https://api.moonshot.cn/v1
+  protocol: openai
+  auth_style: bearer
+  rate_limit:
+    rpm: 30
+    tpm: 30000
+  context_window: 131072
+  capabilities: [chinese, english, long_context, tools, json_mode]
+  docs_url: https://platform.moonshot.cn/docs/api
+  last_verified: 2026-05-27
