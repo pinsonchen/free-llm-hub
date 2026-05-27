@@ -1,10 +1,11 @@
-"""Scheduler — picks the best candidate with round-robin, cooldown awareness, and quota checks."""
+"""Scheduler — picks the best candidate with round-robin, cooldown, and quota awareness."""
 
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass
 
+from app.core.quota import get_tracker
 from app.core.router import Candidate
 
 
@@ -41,24 +42,46 @@ class Scheduler:
         if not candidates:
             return None
 
+        tracker = get_tracker()
         n = len(candidates)
         for offset in range(n):
             idx = (self._rr_index + offset) % n
             candidate = candidates[idx]
+
             ck = self._cooldown_key(candidate)
             cd = self._cooldowns.get(ck)
             if cd and not cd.is_cooled_down():
                 continue
+
+            quota = tracker.check_quota(
+                provider=candidate.provider,
+                key_label=candidate.key_label,
+                model=candidate.model,
+                rpm=candidate.rate_limit_rpm,
+                rpd=candidate.rate_limit_rpd,
+                tpm=candidate.rate_limit_tpm,
+                tpd=candidate.rate_limit_tpd,
+            )
+            if not quota.ok:
+                continue
+
             self._rr_index = (idx + 1) % n
             return candidate
 
         return None
 
-    def report_success(self, candidate: Candidate) -> None:
+    def report_success(self, candidate: Candidate, total_tokens: int = 0) -> None:
         ck = self._cooldown_key(candidate)
         cd = self._cooldowns.get(ck)
         if cd:
             cd.record_success()
+
+        tracker = get_tracker()
+        tracker.record_request(candidate.provider, candidate.key_label, candidate.model)
+        if total_tokens > 0:
+            tracker.record_tokens(
+                candidate.provider, candidate.key_label, candidate.model, total_tokens
+            )
 
     def report_failure(self, candidate: Candidate) -> None:
         ck = self._cooldown_key(candidate)
